@@ -9,77 +9,40 @@ public class NumberValidatorTests
 {
     #region Конструктор
 
-    [TestCase(-1, 2)]
-    [TestCase(1, -1)]
-    [TestCase(3, 3)]
-    [TestCase(3, 4)]
-    public void Constructor_ShouldThrow_WhenArgsInvalid(int precision, int scale)
+    [Test, TestCaseSource(nameof(InvalidArgs_NegativeOrScaleTooBig))]
+    public void Constructor_ShouldThrow_WhenArgsIsNegativeOrScaleAtLeastPrecision(int precision, int scale, string expectedMessage)
     {
         var act = () => new NumberValidator(precision, scale);
-        act.Should().Throw<ArgumentException>($"precision={precision}, scale={scale} недопустимы");
+        act
+            .Should()
+            .Throw<ArgumentException>($"{expectedMessage}. " + $"Параметры: precision={precision}, scale={scale}");
     }
 
     [TestCase(1, 0, true)]
     [TestCase(10, 5, false)]
-    public void Constructor_ShouldNotThrow_WhenArgsValid(int precision, int scale, bool onlyPositive)
+    public void Constructor_DoesNotThrow_WhenPrecisionScaleAndOnlyPositiveAreValid(int precision, int scale, bool onlyPositive)
     {
         var act = () => new NumberValidator(precision, scale, onlyPositive);
-        act.Should().NotThrow($"precision={precision}, scale={scale}, onlyPositive={onlyPositive} допустимы");
+        act
+            .Should()
+            .NotThrow($"precision={precision}, scale={scale}, onlyPositive={onlyPositive} допустимы");
     }
 
     #endregion
 
     #region Валидация чисел
 
-    public static IEnumerable ValidNumbers => new[]
-    {
-        new TestCaseData(17, 2, true, "0.0").SetName("Valid_0.0"),
-        new TestCaseData(4, 2, true, "+1.23").SetName("Valid_+1.23"),
-        new TestCaseData(4, 2, false, "-1.23").SetName("Valid_-1.23"),
-        new TestCaseData(5, 0, true, "12345").SetName("Valid_Integer")
-    };
-
     [Test, TestCaseSource(nameof(ValidNumbers))]
     public void IsValidNumber_ShouldReturnTrue_ForValidNumbers(int precision, int scale, bool onlyPositive,
-        string input)
+        string input, string expectedMessage)
     {
         var validator = new NumberValidator(precision, scale, onlyPositive);
         validator
             .IsValidNumber(input)
             .Should()
-            .BeTrue(
-                $"Тест '{TestContext.CurrentContext.Test.Name}' провален: " +
-                $"'{input}' должно быть валидным для precision={precision}, scale={scale}");
+            .BeTrue($"{input}. {expectedMessage}. " + $"Параметры: precision={precision}, scale={scale}, " +
+                    $"onlyPositive={onlyPositive}");
     }
-
-    public static IEnumerable InvalidNumbers => new[]
-    {
-        new TestCaseData(3, 2, true, "+0.00", "число превышает допустимое количество знаков").SetName("Invalid_+0.00"),
-        new TestCaseData(7, 2, true, "-1.231", "число превышает допустимое количество знаков после запятой").SetName(
-            "Invalid_-1.231"),
-        new TestCaseData(3, 2, true, "a.sd", "содержит недопустимые символы").SetName("Invalid_Chars"),
-        new TestCaseData(3, 2, true, "", "пустая строка").SetName("Invalid_Empty"),
-        new TestCaseData(3, 2, true, " ", "строка содержит только пробел").SetName("Invalid_Space"),
-        new TestCaseData(3, 2, true, "+", "строка содержит только знак без числа").SetName("Invalid_SignOnly"),
-        new TestCaseData(3, 2, true, "-", "строка содержит только знак без числа").SetName("Invalid_SignOnlyMinus"),
-        new TestCaseData(2, 0, true, "211", "число превышает допустимую длину целой части").SetName(
-            "Invalid_TooLongInteger"),
-        new TestCaseData(3, 0, true, "0.1", "число превышает допустимую длину дробной части").SetName(
-            "Invalid_ScaleExceeds"),
-        new TestCaseData(17, 2, true, "0.000", "число превышает допустимую длину дробной части").SetName(
-            "Invalid_ScaleExceeds2"),
-        new TestCaseData(3, 0, true, "0.-12", "недопустимый знак внутри числа").SetName("Invalid_InternalSign"),
-        new TestCaseData(3, 0, true, "0.+12", "недопустимый знак внутри числа").SetName("Invalid_InternalSignPlus"),
-        new TestCaseData(3, 0, true, "0.12.12", "число содержит несколько разделителей").SetName(
-            "Invalid_MultipleSeparators"),
-        new TestCaseData(3, 0, true, "0.,12.12", "число содержит несколько разделителей").SetName(
-            "Invalid_MixedSeparators"),
-        new TestCaseData(3, 0, true, "0.2,12", "число содержит несколько разделителей").SetName(
-            "Invalid_MixedSeparators2"),
-        new TestCaseData(3, 0, true, "0,2.12", "число содержит несколько разделителей").SetName(
-            "Invalid_MixedSeparators3"),
-        new TestCaseData(3, 2, true, null, "значение null недопустимо").SetName("Invalid_Null")
-    };
 
     [Test, TestCaseSource(nameof(InvalidNumbers))]
     public void IsValidNumber_ShouldReturnFalse_ForInvalidNumbers(int precision, int scale, bool onlyPositive,
@@ -89,10 +52,103 @@ public class NumberValidatorTests
         validator
             .IsValidNumber(input)
             .Should()
-            .BeFalse(
-                $"Тест '{TestContext.CurrentContext.Test.Name}' провален: " +
-                $"'{input ?? "null"}'. {expectedMessage}. " + $"Параметры: precision={precision}, scale={scale}");
+            .BeFalse($"{input}. {expectedMessage}. " + $"Параметры: precision={precision}, scale={scale}, " +
+                     $"onlyPositive={onlyPositive}");
     }
 
     #endregion
+
+    public static IEnumerable<TestCaseData> InvalidNumbers()
+    {
+        yield return new TestCaseData(3, 2, true, "+0.00", "число превышает допустимое количество знаков")
+            .SetName("InvalidNumber_TooManyDigits_PositiveZero");
+
+        yield return new TestCaseData(7, 2, true, "-1.231",
+                "число превышает допустимое количество знаков после запятой")
+            .SetName("InvalidNumber_TooManyDecimals_Negative");
+
+        yield return new TestCaseData(3, 2, true, "a.sd", "содержит недопустимые символы")
+            .SetName("InvalidNumber_InvalidCharacters");
+
+        yield return new TestCaseData(3, 2, true, "", "пустая строка")
+            .SetName("InvalidNumber_EmptyString");
+
+        yield return new TestCaseData(3, 2, true, " ", "строка содержит только пробел")
+            .SetName("InvalidNumber_WhitespaceOnly");
+
+        yield return new TestCaseData(3, 2, true, "+", "строка содержит только знак без числа")
+            .SetName("InvalidNumber_SignOnlyPlus");
+
+        yield return new TestCaseData(3, 2, true, "-", "строка содержит только знак без числа")
+            .SetName("InvalidNumber_SignOnlyMinus");
+
+        yield return new TestCaseData(2, 0, true, "211", "число превышает допустимую длину целой части")
+            .SetName("InvalidNumber_IntegerTooLong");
+
+        yield return new TestCaseData(3, 0, true, "0.1", "число превышает допустимую длину дробной части")
+            .SetName("InvalidNumber_ScaleTooLong");
+
+        yield return new TestCaseData(17, 2, true, "0.000", "число превышает допустимую длину дробной части")
+            .SetName("InvalidNumber_ScaleTooLong2");
+
+        yield return new TestCaseData(3, 0, true, "0.-12", "недопустимый знак внутри числа")
+            .SetName("InvalidNumber_InternalSignMinus");
+
+        yield return new TestCaseData(3, 0, true, "0.+12", "недопустимый знак внутри числа")
+            .SetName("InvalidNumber_InternalSignPlus");
+
+        yield return new TestCaseData(3, 0, true, "0.12.12", "число содержит несколько разделителей")
+            .SetName("InvalidNumber_MultipleSeparators");
+
+        yield return new TestCaseData(3, 0, true, "0.,12.12", "число содержит несколько разделителей")
+            .SetName("InvalidNumber_MixedSeparators1");
+
+        yield return new TestCaseData(3, 0, true, "0.2,12", "число содержит несколько разделителей")
+            .SetName("InvalidNumber_MixedSeparators2");
+
+        yield return new TestCaseData(3, 0, true, "0,2.12", "число содержит несколько разделителей")
+            .SetName("InvalidNumber_MixedSeparators3");
+
+        yield return new TestCaseData(3, 2, true, null, "значение null недопустимо")
+            .SetName("InvalidNumber_NullValue");
+    }
+
+
+    public static IEnumerable<TestCaseData> ValidNumbers()
+    {
+        yield return new TestCaseData(
+            17, 2, true, "0.0",
+            "целая часть + дробная часть ≤ precision, дробная часть ≤ scale, число положительное"
+        ).SetName("ValidNumber_ZeroPointZero");
+
+        yield return new TestCaseData(
+            4, 2, true, "+1.23",
+            "целая часть + дробная часть ≤ precision, дробная часть ≤ scale, число положительное"
+        ).SetName("ValidNumber_PositiveWithTwoDecimals");
+
+        yield return new TestCaseData(
+            4, 2, false, "-1.23",
+            "целая часть + дробная часть ≤ precision, дробная часть ≤ scale, отрицательные числа разрешены"
+        ).SetName("ValidNumber_NegativeWithTwoDecimals");
+
+        yield return new TestCaseData(
+            5, 0, true, "12345",
+            "целая часть + дробная часть ≤ precision, дробная часть ≤ scale, число положительное"
+        ).SetName("ValidNumber_Integer");
+    }
+    
+    public static IEnumerable<TestCaseData> InvalidArgs_NegativeOrScaleTooBig()
+    {
+        yield return new TestCaseData(-1, 2, "отрицательный precision недопустим")
+            .SetName("Constructor_Invalid_NegativePrecision");
+
+        yield return new TestCaseData(1, -1, "отрицательный scale недопустим")
+            .SetName("Constructor_Invalid_NegativeScale");
+
+        yield return new TestCaseData(3, 3, "scale должен быть меньше чем precision")
+            .SetName("Constructor_Invalid_ScaleEqualsPrecision");
+
+        yield return new TestCaseData(3, 4, "scale должен быть меньше чем precision")
+            .SetName("Constructor_Invalid_ScaleGreaterThanPrecision");
+    }
 }
