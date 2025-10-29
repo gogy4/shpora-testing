@@ -9,18 +9,21 @@ public class NumberValidatorTests
 {
     #region Конструктор
 
-    [Test, TestCaseSource(nameof(InvalidArgs_NegativeOrScaleTooBig))]
-    public void Constructor_ShouldThrow_WhenArgsIsNegativeOrScaleAtLeastPrecision(int precision, int scale, string expectedMessage)
+    [Test, TestCaseSource(nameof(InvalidArguments_NegativeOrScaleTooBig))]
+    public void Constructor_ShouldThrow_WhenArgumentsAreNegativeOrScaleAtLeastPrecision(int precision, int scale,
+        string expectedMessage)
     {
         var act = () => new NumberValidator(precision, scale);
         act
             .Should()
-            .Throw<ArgumentException>($"{expectedMessage}. " + $"Параметры: precision={precision}, scale={scale}");
+            .Throw<ArgumentException>($"{expectedMessage}. " 
+                                      + $"Параметры: precision={precision}, scale={scale}");
     }
 
     [TestCase(1, 0, true)]
     [TestCase(10, 5, false)]
-    public void Constructor_DoesNotThrow_WhenPrecisionScaleAndOnlyPositiveAreValid(int precision, int scale, bool onlyPositive)
+    public void Constructor_DoesNotThrow_WhenPrecisionScaleAndOnlyPositiveAreValid(int precision, int scale,
+        bool onlyPositive)
     {
         var act = () => new NumberValidator(precision, scale, onlyPositive);
         act
@@ -32,7 +35,7 @@ public class NumberValidatorTests
 
     #region Валидация чисел
 
-    [Test, TestCaseSource(nameof(ValidNumbers))]
+    [TestCaseSource(nameof(ValidNumbers))]
     public void IsValidNumber_ShouldReturnTrue_ForValidNumbers(int precision, int scale, bool onlyPositive,
         string input, string expectedMessage)
     {
@@ -44,7 +47,7 @@ public class NumberValidatorTests
                     $"onlyPositive={onlyPositive}");
     }
 
-    [Test, TestCaseSource(nameof(InvalidNumbers))]
+    [TestCaseSource(nameof(InvalidNumbers))]
     public void IsValidNumber_ShouldReturnFalse_ForInvalidNumbers(int precision, int scale, bool onlyPositive,
         string input, string expectedMessage)
     {
@@ -58,7 +61,7 @@ public class NumberValidatorTests
 
     #endregion
 
-    public static IEnumerable<TestCaseData> InvalidNumbers()
+    private static IEnumerable<TestCaseData> InvalidNumbers()
     {
         yield return new TestCaseData(3, 2, true, "+0.00", "число превышает допустимое количество знаков")
             .SetName("InvalidNumber_TooManyDigits_PositiveZero");
@@ -114,7 +117,7 @@ public class NumberValidatorTests
     }
 
 
-    public static IEnumerable<TestCaseData> ValidNumbers()
+    private static IEnumerable<TestCaseData> ValidNumbers()
     {
         yield return new TestCaseData(
             17, 2, true, "0.0",
@@ -136,8 +139,8 @@ public class NumberValidatorTests
             "целая часть + дробная часть ≤ precision, дробная часть ≤ scale, число положительное"
         ).SetName("ValidNumber_Integer");
     }
-    
-    public static IEnumerable<TestCaseData> InvalidArgs_NegativeOrScaleTooBig()
+
+    private static IEnumerable<TestCaseData> InvalidArguments_NegativeOrScaleTooBig()
     {
         yield return new TestCaseData(-1, 2, "отрицательный precision недопустим")
             .SetName("Constructor_Invalid_NegativePrecision");
